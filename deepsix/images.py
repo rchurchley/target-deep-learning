@@ -24,7 +24,7 @@ class Image_Manager:
     def __str__(self):
         return '\n'.join(str(s) for s in self.resources)
 
-    def to_json(self, filename):
+    def save(self, filename):
         with open(filename, 'w') as f:
             json.dump([r.__dict__ for r in self.resources], f, indent=2)
 

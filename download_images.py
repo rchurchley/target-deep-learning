@@ -19,4 +19,4 @@ for tag in tags:
     run_time = time.time() - start_time
     print('{}s'.format(round(run_time, 2)))
 flickr.download_all(directory='images/flickr/raw')
-flickr.to_json('images/flickr/images.json')
+flickr.save('images/flickr/images.json')
