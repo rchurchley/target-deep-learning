@@ -38,7 +38,8 @@ class Image_Manager:
         with open(filename, 'w') as f:
             json.dump([r.__dict__ for r in self.resources], f, indent=2)
 
-    def find_resources(self):
+    def find_resources(self, **kwargs):
+        """Return an iterator of Image_Resources from a source."""
         return []
 
     def add_resources(self, maximum, **kwargs):
