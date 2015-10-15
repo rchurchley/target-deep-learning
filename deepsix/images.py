@@ -11,8 +11,17 @@ requests.packages.urllib3.disable_warnings()
 
 
 class Image_Manager:
+    """A class for collecting, downloading, and modifying images.
+
+    Subclasses can override find_resources() to return results from a
+    particular source of images (e.g. Flickr).
+
+    Attributes:
+        resources: A set of Image_Resource objects.
+    """
 
     def __init__(self, existing=None):
+        """Initialize image resources from a JSON file."""
         if existing and os.path.exists(existing):
             with open(existing) as json_data:
                 resources = json.load(json_data)
@@ -25,6 +34,7 @@ class Image_Manager:
         return '\n'.join(str(s) for s in self.resources)
 
     def save(self, filename):
+        """Save image resources to a JSON file."""
         with open(filename, 'w') as f:
             json.dump([r.__dict__ for r in self.resources], f, indent=2)
 
@@ -32,6 +42,7 @@ class Image_Manager:
         return []
 
     def add_resources(self, maximum, **kwargs):
+        """Collect a bounded number of Image_Resources from a source."""
         i = 0
         for resource in self.find_resources(**kwargs):
             self.resources.add(resource)
@@ -40,6 +51,7 @@ class Image_Manager:
                 break
 
     def download_all(self, directory):
+        """Download all raw image resources to a given directory."""
         os.makedirs(directory, exist_ok=True)
         i, n = 1, len(self.resources)
         for r in self.resources:
@@ -51,7 +63,18 @@ class Image_Manager:
             i += 1
 
     class Image_Resource:
+        """A resource storing an image's url and the paths of local versions.
+
+        Attributes:
+            id: A unique string identifying the resource.
+            url: A url pointing to a downloadable copy of the image.
+            versions: A dictionary storing the paths of various local versions
+                of the image. The download() method stores a 'raw' version,
+                but altered versions with arbitrary keys can be added.
+        """
+
         def __init__(self, **kwargs):
+            """Initialize image resource."""
             self.id = str(kwargs['id'])
             self.url = kwargs['url'] if 'url' in kwargs else None
             self.versions = kwargs['versions'] if 'versions' in kwargs else {}
@@ -63,15 +86,19 @@ class Image_Manager:
                 self.versions)
 
         def __hash__(self):
+            """Return a hash of the image resource."""
             return hash(self.id)
 
         def __eq__(self, other):
+            """Return whether two image resources have the same id."""
             return self.id == other.id
 
         def __ne__(self, other):
+            """Return whether two image resources have different ids."""
             return self.id != other.id
 
         def download(self, directory):
+            """Download a 'raw' version of the image to a directory."""
             if 'raw' in self.versions:
                 raise RuntimeWarning('Already downloaded')
             else:
@@ -86,8 +113,14 @@ class Image_Manager:
 
 
 class Flickr_Manager(Image_Manager):
+    """A class for collecting, downloading, and modifying Flickr images.
+
+    Attributes:
+        resources: A set of Flickr_Resource objects.
+    """
 
     def __init__(self, api_key, existing=None):
+        """Load a Flickr API key file and initialize image resources."""
         super().__init__(existing)
         with open(api_key) as k:
             api_keys = k.readlines()
@@ -96,6 +129,7 @@ class Flickr_Manager(Image_Manager):
 
     def find_resources(self, tags):
         session = flickrapi.FlickrAPI(self.api_key, self.api_secret)
+        """Return an iterator of Flickr_Resources from the Flickr API."""
         for photo in session.walk(tag_mode='all', tags=tags):
             yield self.Flickr_Resource(id=photo.get('id'),
                                        farm=photo.get('farm'),
@@ -103,6 +137,16 @@ class Flickr_Manager(Image_Manager):
                                        secret=photo.get('secret'))
 
     class Flickr_Resource(Image_Manager.Image_Resource):
+        """A resource storing an image's url and the paths of local versions.
+
+        Attributes:
+            id: A unique string identifying the resource.
+            url: A url pointing to a downloadable copy of the image.
+            versions: A dictionary storing the paths of various local versions
+                of the image. The download() method stores a 'raw' version,
+                but altered versions with arbitrary keys can be added.
+        """
+
         def __init__(self, **kwargs):
             self.id = kwargs['id']
             if 'url' in kwargs:
@@ -120,13 +164,29 @@ class Flickr_Manager(Image_Manager):
 
 
 class Target_Manager(Image_Manager):
+    """A class for collecting, downloading, and modifying Flickr images.
+
+    Attributes:
+        resources: A set of Flickr_Resource objects.
+    """
 
     def find_resources(self, filename):
+        """Return an iterator of Target_Resources from a text file of SKUs."""
         with open(filename) as f:
             for sku in f:
                 yield self.Target_Resource(id=sku.strip())
 
     class Target_Resource(Image_Manager.Image_Resource):
+        """A resource storing an image's url and the paths of local versions.
+
+        Attributes:
+            id: A unique string identifying the resource.
+            url: A url pointing to a downloadable copy of the image.
+            versions: A dictionary storing the paths of various local versions
+                of the image. The download() method stores a 'raw' version,
+                but altered versions with arbitrary keys can be added.
+        """
+
         def __init__(self, **kwargs):
             self.id = kwargs['id']
             if 'url' in kwargs:
