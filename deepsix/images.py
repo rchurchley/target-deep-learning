@@ -31,6 +31,7 @@ class Image_Manager:
             self.resources = set()
 
     def __str__(self):
+        """Return a string representation of the image resource set."""
         return '\n'.join(str(s) for s in self.resources)
 
     def save(self, filename):
@@ -81,10 +82,10 @@ class Image_Manager:
             self.versions = kwargs['versions'] if 'versions' in kwargs else {}
 
         def __str__(self):
-            return 'Image {}\n | URL: {}\n | Versions: {}'.format(
+            """Return a one-line string representation of the resource."""
+            return 'Image {} | {}'.format(
                 self.id,
-                self.url,
-                self.versions)
+                ', '.join(key for key in self.versions))
 
         def __hash__(self):
             """Return a hash of the image resource."""
