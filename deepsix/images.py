@@ -158,10 +158,8 @@ class Flickr_Manager(Image_Manager):
         """
 
         def __init__(self, **kwargs):
-            self.id = kwargs['id']
-            if 'url' in kwargs:
-                self.url = kwargs['url']
-            else:
+            super().__init__(**kwargs)
+            if 'url' not in kwargs:
                 template = 'https://farm{}.staticflickr.com/{}/{}_{}.jpg'
                 farm = kwargs['farm']
                 server = kwargs['server']
@@ -193,10 +191,8 @@ class Target_Manager(Image_Manager):
         """
 
         def __init__(self, **kwargs):
-            self.id = kwargs['id']
-            if 'url' in kwargs:
-                self.url = kwargs['url']
-            else:
+            super().__init__(**kwargs)
+            if 'url' not in kwargs:
                 template = ('http://scene7.targetimg1.com/is/image/Target/'
                             '{}?wid={}')
                 size = kwargs['size']
