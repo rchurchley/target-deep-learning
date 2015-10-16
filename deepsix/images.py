@@ -183,7 +183,7 @@ class Flickr_Manager(Image_Manager):
     def find_resources(self, tags):
         """Return an iterator of Flickr_Resources from the Flickr API."""
         session = flickrapi.FlickrAPI(self.__api_key, self.__api_secret)
-        for photo in session.walk(tag_mode='all', tags=tags):
+        for photo in session.walk(tag_mode='all', tags=tags, per_page=500):
             yield self.Flickr_Resource(id=photo.get('id'),
                                        farm=photo.get('farm'),
                                        server=photo.get('server'),
