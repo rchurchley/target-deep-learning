@@ -1,4 +1,5 @@
 images
 data
 Flickr_API_key.txt
+api_flickr.txt
 *.pyc

@@ -1,10 +1,7 @@
 import os
 import requests
 import shutil
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import json
 import flickrapi
 
 requests.packages.urllib3.disable_warnings()
@@ -13,7 +10,7 @@ requests.packages.urllib3.disable_warnings()
 class Image_Manager:
     """A class for collecting, downloading, and modifying images.
 
-    Subclasses can override find_resources() to return results from a
+    Subclasses may override find_resources() to return results from a
     particular source of images (e.g. Flickr).
 
     Attributes:
@@ -53,22 +50,25 @@ class Image_Manager:
     def add_resources(self, maximum, **kwargs):
         """Collect a bounded number of Image_Resources from a source."""
         i = 0
-        for resource in self.find_resources(**kwargs):
-            self.resources.add(resource)
+        for r in self.find_resources(**kwargs):
+            self.resources.add(r)
             i += 1
             if i >= maximum:
                 break
 
-    def download_all(self, directory):
-        """Download all raw image resources to a given directory."""
-        os.makedirs(directory, exist_ok=True)
+    def download_all(self):
+        """Download all image resources to self.directory/raw."""
+        subdirectory_path = os.path.join(self.directory, 'raw')
+        os.makedirs(subdirectory_path, exist_ok=True)
         i, n = 1, len(self.resources)
         for r in self.resources:
             try:
-                r.download(directory)
-                print('{}/{}: Downloaded new file {}'.format(i, n, r.id))
+                r.download(subdirectory_path)
+                print('{}/{}: New file {} sucessfully downloaded.'
+                      ''.format(i, n, r.id))
             except RuntimeWarning:
-                print('{}/{}: already exists'.format(i, n))
+                print('{}/{}: Old file {} already exists.'
+                      ''.format(i, n, r.id))
             i += 1
 
     class Image_Resource:
@@ -149,7 +149,7 @@ class Flickr_Manager(Image_Manager):
                                        secret=photo.get('secret'))
 
     class Flickr_Resource(Image_Manager.Image_Resource):
-        """A resource storing an image's url and the paths of local versions.
+        """The Flickr URL and local path to a raw image resource.
 
         Attributes:
             id: A unique string identifying the resource.
@@ -168,7 +168,7 @@ class Flickr_Manager(Image_Manager):
 
 
 class Target_Manager(Image_Manager):
-    """A class for collecting, downloading, and modifying Flickr images.
+    """A class for collecting, downloading, and modifying Target images.
 
     Attributes:
         directory: A directory path for images and related files.

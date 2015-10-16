@@ -15,12 +15,6 @@ def image_filenames_as_dict(input_directory):
     return result
 
 
-def ensure_directory(directory_name):
-    """Create a directory at a path if it does not already exist."""
-    if not os.path.exists(directory_name):
-        os.makedirs(directory_name)
-
-
 def alter_images(procedure,
                  args,
                  input_directory,
