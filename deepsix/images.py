@@ -2,6 +2,7 @@ import os
 import requests
 import shutil
 import json
+from PIL import Image
 import flickrapi
 
 requests.packages.urllib3.disable_warnings()
@@ -71,6 +72,28 @@ class Image_Manager:
                       ''.format(i, n, r.id))
             i += 1
 
+    def make_versions(self, version_key, alteration, update_raw=False):
+        """Create a new, altered version of each image resource."""
+        subdirectory_path = os.path.join(self.directory, version_key)
+        os.makedirs(subdirectory_path, exist_ok=True)
+        i, n = 1, len(self.resources)
+        for r in self.resources:
+            try:
+                r.make_version(subdirectory_path, alteration, update_raw)
+                print('{}/{}: New version of {} sucessfully created.'
+                      ''.format(i, n, r.id))
+            except RuntimeWarning:
+                print('{}/{}: Old version of {} already exists.'
+                      ''.format(i, n, r.id))
+            i += 1
+
+    def resize_raws(self, size):
+        """Resize each image resource and treat the updated image as raw."""
+        self.make_versions(
+            version_key=str(size),
+            alteration=lambda img: img.resize(size=(size, size)),
+            update_raw=True)
+
     class Image_Resource:
         """The URL and local path to a raw image resource.
 
@@ -121,6 +144,25 @@ class Image_Manager:
                             r.raw.decode_content = True
                             shutil.copyfileobj(r.raw, out_file)
                             self.raw = filename
+
+        def make_version(self, directory, alteration, update_raw=False):
+            """Alter the image and save a version in a directory.
+
+            Args:
+                directory: The directory path to save the new version in.
+                alteration: A function returning a PIL.Image from input img.
+                update_raw: If true, the new image will be considered the new
+                    raw image.
+            """
+            filename = '{}/{}.bmp'.format(directory, self.id)
+            if os.path.exists(filename):
+                raise RuntimeWarning('A version is already here.')
+            else:
+                img = Image.open(self.raw)
+                img = alteration(img)
+                img.save(filename, 'BMP')
+            if update_raw:
+                self.raw = filename
 
 
 class Flickr_Manager(Image_Manager):
