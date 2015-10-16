@@ -128,15 +128,14 @@ class Image_Manager:
         def download(self, directory):
             """Download a raw version of the image to a directory."""
             filename = '{}/{}.jpeg'.format(directory, self.id)
-            if self.raw:
-                if self.raw != filename:
-                    raise RuntimeError('Expecting a different directory.')
-                else:
-                    raise RuntimeWarning('Already downloaded.')
+            if self.raw and self.raw == filename:
+                raise RuntimeWarning('Already downloaded.')
             else:
                 if os.path.exists(filename):
-                    raise RuntimeError('A file already exists here.')
+                    self.raw = filename
+                    raise RuntimeWarning('A file already exists here.')
                 else:
+                    self.raw = ''
                     r = requests.get(self.url, stream=True)
                     if all([r.status_code == 200,
                             r.headers['Content-Type'] == 'image/jpeg']):
