@@ -30,9 +30,11 @@ class Image_Manager:
             with open(filename) as f:
                 existing_resources = json.load(f)
                 for key, paths in existing_resources.items():
+                    url = paths[0]
+                    raw = paths[1] if os.path.exists(paths[1]) else ''
                     self.resources.add(self.Image_Resource(id=key,
-                                                           url=paths[0],
-                                                           raw=paths[1]))
+                                                           url=url,
+                                                           raw=raw))
 
     def __str__(self):
         """Return a string representation of the image resource set."""
