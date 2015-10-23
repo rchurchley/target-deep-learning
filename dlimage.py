@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from deepsix.images import *
 import time
 

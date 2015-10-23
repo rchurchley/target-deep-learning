@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from PIL import Image, ImageDraw
 from numpy.random import randint as randint
 from deepsix.images import *

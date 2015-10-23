@@ -16,7 +16,7 @@ class Image_Manager:
 
     Attributes:
         directory: A directory path for images and related files.
-        resources: A dictionary of Image_Resource objects organized by id.
+        resources: A set of Image_Resource objects.
     """
 
     def __init__(self, directory):
