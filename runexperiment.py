@@ -4,28 +4,25 @@ import numpy
 import uuid
 from lasagne.layers import get_output, get_all_params
 from deepsix.train import *
-from deepsix.data import load_datasets
 
-input_directory = 'data/flickr+rect'
+input_directory = 'data/example'
 num_epochs = 100
+
+
+def load_datasets(input_directory):
+    """Return the training, validation, and testing data and labels."""
+    result = {'training': {}, 'validation': {}, 'testing': {}}
+    for dataset in result:
+        for part in ['data', 'labels']:
+            result[dataset][part] = numpy.load(
+                '{}/{}_{}.npy'.format(input_directory, dataset, part))
+    return result
 
 
 def build_network(input_var=None):
     network = lasagne.layers.InputLayer(
-        shape=(None, 1, 64, 64),
+        shape=(None, 3, 64, 64),
         input_var=input_var)
-
-    network = lasagne.layers.Conv2DLayer(
-        network, num_filters=8, filter_size=(5, 5),
-        nonlinearity=lasagne.nonlinearities.rectify)
-
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
-
-    network = lasagne.layers.Conv2DLayer(
-        network, num_filters=8, filter_size=(5, 5),
-        nonlinearity=lasagne.nonlinearities.rectify)
-
-    network = lasagne.layers.MaxPool2DLayer(network, pool_size=(2, 2))
 
     network = lasagne.layers.DenseLayer(
         lasagne.layers.dropout(network, p=.5),
@@ -65,7 +62,6 @@ def main(input_directory, num_epochs=5):
     network = build_network(input_var)
     model = build_model(input_var, target_var, network)
 
-    print("Starting training...")
     train_network(data, model, num_epochs)
 
     print("\nLearned parameters:")

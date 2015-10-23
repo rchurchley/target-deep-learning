@@ -93,16 +93,18 @@ def train_network(inputs, model, num_epochs):
             'updates': optimizer from Lasagne.updates.
         num_epochs (int): Number of epochs to train for.
     """
+    print("Compiling model...")
     network, train_fn, val_fn = compile_model(model)
 
+    print("Starting training...")
     print("\n{:>5} {:>17} {:>17} {:>10} {:>10}".format(
         'Epoch', 'Training loss', 'Validation loss', 'Accuracy', 'Time (s)'))
     for epoch in range(num_epochs):
         train_err = 0
         train_batches = 0
         start_time = time.time()
-        for batch in iterate_minibatches(inputs['train']['data'],
-                                         inputs['train']['labels'],
+        for batch in iterate_minibatches(inputs['training']['data'],
+                                         inputs['training']['labels'],
                                          1,
                                          shuffle=True):
             batch_inputs, batch_targets = batch
@@ -110,7 +112,7 @@ def train_network(inputs, model, num_epochs):
             train_batches += 1
 
         avg_train_err = train_err / train_batches
-        avg_val_err, avg_val_acc = full_pass(inputs['validate'], val_fn)
+        avg_val_err, avg_val_acc = full_pass(inputs['validation'], val_fn)
         print("{:>5} {:>17.5f} {:>17.5f} {:>10.3%} {:>10.3f}".format(
             epoch + 1,
             avg_train_err,
@@ -119,6 +121,6 @@ def train_network(inputs, model, num_epochs):
             time.time() - start_time))
 
     print("\nFinal results:")
-    avg_final_err, avg_final_acc = full_pass(inputs['test'], val_fn)
+    avg_final_err, avg_final_acc = full_pass(inputs['testing'], val_fn)
     print("Loss: {}".format(avg_final_err))
     print("Accuracy: {:.3%}".format(avg_final_acc))
