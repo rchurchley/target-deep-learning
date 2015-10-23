@@ -1,116 +1,153 @@
-from utils import ensure_directory, image_filenames_as_dict
-from PIL import Image
+import os
+import json
+import random
 import numpy
+from PIL import Image
+
+image_extensions = set(['.jpg', '.jpeg', '.bmp', '.png'])
 
 
-def load_image(path, mode='L'):
-    """Return a 2d nparray encoding an image after preprocessing.
-
-    The array is normalized to [0,1] assuming input is from [0,255].
-    """
-    result = numpy.array(Image.open(path).convert(mode))
-    if mode == 'L':
-        result = numpy.expand_dims(result, 0)
-    else:
-        result = numpy.swapaxes(result, 2, 0)
-    result = result / 255.
+def image_filenames_as_dict(input_directory):
+    """Return {"filename": "/path/to/filename.ext"} for images in a folder."""
+    result = {}
+    for filename in os.listdir(input_directory):
+        root, ext = os.path.splitext(filename)
+        if ext.lower() in image_extensions:
+            result[root] = os.path.join(input_directory, filename)
     return result
 
 
-def load_images(path_list, mode='L'):
-    """Return a list of 2d nparrays encoding a list of images."""
-    return [load_image(img, mode) for img in path_list]
+class Dataset:
+    """A class for converting folders of images to numpy arrays with labels.
 
-
-def iter_image_paths(first_directory, second_directory):
-    """Iterate over pairs (path, i) where path points to a file in directory i.
-
-    Args:
-        first_directory (str): The relative path to the first directory.
-        second_directory (str): The relative path to the second directory.
-
-    Yield:
-        Pairs (path, i) for each file in the union of first_directory and
-        second_directory. The integer i is 0 if path points to a file in
-        first_directory and 1 if path points to a file in second_directory.
-        If both directories contain a file with the same name, only one of the
-        files is chosen (at random).
+    Attributes:
+        directory: A directory path for for the output files.
+        sources: A list of paths to directories containing images to be used.
+        images: A list of Image_Data each storing the path, source index, and
+            a numpy array of the image data.
+        parts: A dictionary storing the number of images reserved for the
+            training, validation, and testing data sets.
     """
-    first_dictionary = image_filenames_as_dict(first_directory)
-    second_dictionary = image_filenames_as_dict(second_directory)
-    for key in set().union(first_dictionary, second_dictionary):
-        if key in first_dictionary and key in second_dictionary:
-            coinflip = numpy.random.randint(2)
-        else:
-            coinflip = None
-        if (key not in second_dictionary) or (coinflip == 0):
-            yield first_dictionary[key], 0
-        else:  # (key not in first_dictionary) or (coinflip == 1):
-            yield second_dictionary[key], 1
 
+    def __init__(self, directory, sources):
+        """Initialize the dataset with image paths.
 
-def make_dataset(first_directory, second_directory, output_directory):
-    """Create and save training, validation, and test datasets.
+        Args:
+            directory: A directory path for for the output files.
+            sources: A list of directory paths containing images.
+        """
+        os.makedirs(directory, exist_ok=True)  # Ensure `directory` exists
+        self.directory = directory
+        self.sources = sources
+        self.load_paths()
+        self.repartition()
+        n = len(self.images)
+        self.parts = {'training': slice(2*(n//10), n),
+                      'validation': slice(n//10, 2*(n//10)),
+                      'testing': slice(n//10)}
 
-    Datasets will be saved as numpy arrays as the files train_data.npy,
-    train_labels.npy, validate_data.npy, validate_labels.npy, test_data.npy,
-    and test_labels.npy in the output directory.
+    def __str__(self):
+        """Return a summary of the dataset."""
+        result = '{} images from {} sources'.format(len(self.images),
+                                                    len(self.sources))
+        for purpose in ['training', 'validation', 'testing']:
+            dist = []
+            images = self.images[self.parts[purpose]]
+            for source in range(len(self.sources)):
+                dist.append(sum(1 for x in images if x.label == source))
+            result += '\n | {:6} for {} {}'.format(sum(dist), purpose, dist)
+        return result
 
-    Args:
-        first_directory (str): The relative path to a directory of images in
-            the first category the neural network should distinguish between.
-        second_directory (str): The relative path to a directory of images in
-            the second category the neural network should distinguish between.
-        output_directory (str): The relative path to a directory for the output
-            nparrays to be saved to.
-    """
-    pairs = list(iter_image_paths(first_directory, second_directory))
-    numpy.random.shuffle(pairs)
-    paths, indicators = zip(*pairs)
+    def load_paths(self):
+        """Add Image_Data to self.images for each image in self.sources.
 
-    n = len(paths)
-    n_train = 8 * n / 10
-    n_validate = 1 * n / 10
-    # n_test = n - (n_train + n_validate)
+        If two sources contain an image with the same id, choose one source
+        uniformly at random.
+        """
+        # find image paths from each source
+        path_dictionary = {}
+        label = 0
+        for source in self.sources:
+            for uid, path in image_filenames_as_dict(source).items():
+                if uid not in path_dictionary:
+                    path_dictionary[uid] = [(path, label)]
+                else:
+                    path_dictionary[uid].append((path, label))
+            label += 1
+        # roll a die to decide which source to use for each image id
+        for uid, paths in path_dictionary.items():
+            source = random.randrange(len(paths))
+            path_dictionary[uid] = paths[source]
+        # add (path, label) pairs to self.paths
+        self.images = []
+        for item in path_dictionary.values():
+            self.images.append(self.Image_Data(path=item[0],
+                                               label=item[1]))
 
-    ensure_directory(output_directory)
+    def repartition(self):
+        """Redistribute images among the training/validation/testing sets."""
+        random.shuffle(self.images)
 
-    train_data = numpy.array(load_images(paths[:n_train]))
-    train_labels = numpy.array(indicators[:n_train])
+    def load_images(self):
+        """Load image data from paths for all images in self.images."""
+        correct_shape = None
+        for image in self.images:
+            image.load()
+            if correct_shape:
+                assert image.image.shape == correct_shape
+            correct_shape = image.image.shape
 
-    numpy.save(
-        '{}/train_data.npy'.format(output_directory),
-        train_data.astype(numpy.float32))
-    numpy.save(
-        '{}/train_labels.npy'.format(output_directory),
-        train_labels.astype(numpy.int32))
+    def save(self):
+        """Save the dataset in .npy and JSON files.
 
-    validate_data = numpy.array(load_images(paths[n_train:n_train+n_validate]))
-    validate_labels = numpy.array(indicators[n_train:n_train+n_validate])
+        Six .npy files are produced, storing the image data and labels of the
+        training, validation, and testing sets, respectively. One JSON file
+        stores the list of image paths used in the dataset for better
+        reproducibility.
+        """
+        save_data = {}
+        save_data['sources'] = self.sources
+        save_data['paths'] = [x.path for x in self.images]
+        for part, slice in self.parts.items():
+            # load data into numpy array
+            data = numpy.array([x.image for x in self.images[slice]])
+            labels = numpy.array([x.label for x in self.images[slice]])
+            # cast numpy arrays to the appropriate types
+            data = data.astype(numpy.float32)
+            labels = labels.astype(numpy.int32)
+            # save data and labels to .npy files
+            data_file = os.path.join(self.directory, part + '_data.npy')
+            numpy.save(data_file, data)
+            print('Saved array {!s:22} > {}'.format(data.shape, data_file))
+            labels_file = os.path.join(self.directory, part + '_labels.npy')
+            numpy.save(labels_file, labels)
+            print('Saved array {!s:22} > {}'.format(labels.shape, labels_file))
+        filename = os.path.join(self.directory, 'datasets.json')
+        with open(filename, 'w') as f:
+            json.dump(save_data, f)
 
-    numpy.save(
-        '{}/validate_data.npy'.format(output_directory),
-        validate_data.astype(numpy.float32))
-    numpy.save(
-        '{}/validate_labels.npy'.format(output_directory),
-        validate_labels.astype(numpy.int32))
+    class Image_Data:
+        """The local path, source label, and pixel data of an image file.
 
-    test_data = numpy.array(load_images(paths[n_train+n_validate:]))
-    test_labels = numpy.array(indicators[n_train+n_validate:])
+        Attributes:
+            path: A string storing the local path of the image.
+            label: An integer indicating the source of the image.
+            image: A 3D numpy array storing the pixel data of the image.
+        """
 
-    numpy.save(
-        '{}/test_data.npy'.format(output_directory),
-        test_data.astype(numpy.float32))
-    numpy.save(
-        '{}/test_labels.npy'.format(output_directory),
-        test_labels.astype(numpy.int32))
+        def __init__(self, path, label):
+            """Initialize image path and label."""
+            self.path = path
+            self.label = label
+            self.image = []
 
+        def load(self):
+            """Load RGB image data from the file at self.path to a numpy array.
 
-def load_datasets(input_directory):
-    """Return the training, validation, and testing data and labels."""
-    result = {'train': {}, 'validate': {}, 'test': {}}
-    for dataset in result:
-        for part in ['data', 'labels']:
-            result[dataset][part] = numpy.load(
-                '{}/{}_{}.npy'.format(input_directory, dataset, part))
-    return result
+            The numpy array self.image has shape (3, width, height) with
+            subpixel values normalized to the interval [0,1].
+            """
+            image = numpy.array(Image.open(self.path).convert('RGB'))
+            image = numpy.swapaxes(image, 2, 0)
+            image = image / 255.
+            self.image = image
