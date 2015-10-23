@@ -31,7 +31,13 @@ class Image_Manager:
                 existing_resources = json.load(f)
                 for key, paths in existing_resources.items():
                     url = paths[0]
-                    raw = paths[1] if os.path.exists(paths[1]) else ''
+                    default_raw = os.path.join(directory, 'raw', key + '.jpeg')
+                    if os.path.exists(paths[1]):
+                        raw = paths[1]
+                    elif os.path.exists(default_raw):
+                        raw = default_raw
+                    else:
+                        raw = ''
                     self.resources.add(self.Image_Resource(id=key,
                                                            url=url,
                                                            raw=raw))
