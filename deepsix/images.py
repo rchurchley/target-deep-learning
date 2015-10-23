@@ -64,6 +64,7 @@ class Image_Manager:
         subdirectory_path = os.path.join(self.directory, 'raw')
         os.makedirs(subdirectory_path, exist_ok=True)
         i, n = 1, len(self.resources)
+        invalid = set()
         for r in self.resources:
             try:
                 r.download(subdirectory_path)
@@ -72,7 +73,11 @@ class Image_Manager:
             except RuntimeWarning:
                 print('{}/{}: Old file {} already exists.'
                       ''.format(i, n, r.id))
+            except ValueError:
+                print('{}/{}: Invalid response for {}.'.format(i, n, r.id))
+                invalid.add(r)
             i += 1
+        self.resources.difference_update(invalid)
 
     def make_versions(self, version_key, alteration, update_raw=False):
         """Create a new, altered version of each image resource."""
@@ -145,6 +150,8 @@ class Image_Manager:
                             r.raw.decode_content = True
                             shutil.copyfileobj(r.raw, out_file)
                             self.raw = filename
+                    else:
+                        raise ValueError('Invalid response.')
 
         def make_version(self, directory, alteration, update_raw=False):
             """Alter the image and save a version in a directory.
