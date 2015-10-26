@@ -58,7 +58,11 @@ class Image_Manager:
         """Save image resources to a JSON file."""
         filename = os.path.join(self.directory, 'resources.json')
         with open(filename, 'w') as f:
-            json.dump({r.id: [r.url, r.raw] for r in self.resources}, f)
+            json.dump(
+                {r.id: [r.url, r.raw] for r in self.resources},
+                f,
+                indent=2,
+                sort_keys=True)
 
     def find_resources(self, **kwargs):
         """Return an iterator of Image_Resources from a source."""
@@ -81,14 +85,13 @@ class Image_Manager:
         invalid = set()
         for r in self.resources:
             try:
+                print('{}/{}: New file {}'.format(i, n, r.id), end=' ')
                 r.download(subdirectory_path)
-                print('{}/{}: New file {} sucessfully downloaded.'
-                      ''.format(i, n, r.id))
+                print('sucessfully downloaded.')
             except RuntimeWarning:
-                print('{}/{}: Old file {} already exists.'
-                      ''.format(i, n, r.id))
+                print('already exists.')
             except ValueError:
-                print('{}/{}: Invalid response for {}.'.format(i, n, r.id))
+                print('received an invalid response.')
                 invalid.add(r)
             i += 1
         self.resources.difference_update(invalid)
@@ -100,12 +103,11 @@ class Image_Manager:
         i, n = 1, len(self.resources)
         for r in self.resources:
             try:
+                print('{}/{}: New version of {}'.format(i, n, r.id), end=' ')
                 r.make_version(subdirectory_path, alteration, update_raw)
-                print('{}/{}: New version of {} sucessfully created.'
-                      ''.format(i, n, r.id))
+                print('sucessfully created.')
             except RuntimeWarning:
-                print('{}/{}: Old version of {} already exists.'
-                      ''.format(i, n, r.id))
+                print('already exists.')
             i += 1
 
     def resize_raws(self, size):

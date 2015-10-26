@@ -83,8 +83,11 @@ class Dataset:
         for image in self.images:
             image.load()
             if correct_shape:
-                assert image.image.shape == correct_shape
-            correct_shape = image.image.shape
+                try:
+                    assert image.image.shape == correct_shape
+                    correct_shape = image.image.shape
+                except AssertionError:
+                    print('{} is not {}'.format(image.path, correct_shape))
 
     def save(self):
         """Save the dataset in .npy and JSON files.
