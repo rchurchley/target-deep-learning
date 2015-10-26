@@ -232,7 +232,7 @@ class Flickr_Manager(Image_Manager):
         def __init__(self, **kwargs):
             Image_Manager.Image_Resource.__init__(self, **kwargs)
             if 'url' not in kwargs:
-                template = 'https://farm{}.staticflickr.com/{}/{}_{}.jpg'
+                template = 'https://farm{}.staticflickr.com/{}/{}_{}_s.jpg'
                 farm = kwargs['farm']
                 server = kwargs['server']
                 secret = kwargs['secret']
