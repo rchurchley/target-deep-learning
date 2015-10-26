@@ -1,11 +1,14 @@
-images
-data
+# API keys should not be publicly committed
 Flickr_API_key.txt
 api_flickr.txt
-*.pyc
+
+# these directories contain large amounts of non-committable image data
+images
+data
 
 # generally a good idea
-*.pkl 
+*.pkl
+*.pyc
 
 # stupid emacs auto-saves
 *~

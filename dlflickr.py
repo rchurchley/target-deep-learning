@@ -1,4 +1,4 @@
-from deepsix.images import *
+from deepsix.images import Flickr_Manager
 import time
 
 flickr = Flickr_Manager(api_key='api_flickr.txt',
@@ -8,8 +8,7 @@ tags = ['nikon', 'canon', 'iphone', 'raw', 'photography', 'photos', 'photo',
         'family', 'festival', 'flower', 'food', 'landscape', 'nature', 'park',
         'party', 'people', 'sky', 'snow', 'street', 'sunset', 'travel',
         'trees', 'vacation', 'water', 'winter', 'spring', 'summer', 'autumn',
-        'australia', 'california', 'canada',  'china', 'europe', 'india',
-        'japan', 'usa']
+        'australia', 'canada',  'china', 'europe', 'india', 'japan', 'usa']
 for tag in tags:
     print('Finding images tagged \'{}\'... '.format(tag), end='', flush=True)
     start_time = time.time()
