@@ -35,7 +35,8 @@ class Experiment:
                 the output layer of a Lasagne neural network.
             **kwargs: Passed to self.__compile_model.
         """
-        os.makedirs(directory, exist_ok=True)  # Ensure `directory` exists
+        if not os.path.exists(directory):
+            os.makedirs(directory)  # Ensure `directory` exists
         self.directory = directory
         self.report = {}
         self.history = [['Epoch', 'Trn_Err', 'Trn_Acc', 'Val_Err', 'Val_Acc']]

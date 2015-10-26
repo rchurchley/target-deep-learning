@@ -22,7 +22,8 @@ class Image_Manager:
 
     def __init__(self, directory):
         """Initialize image resources."""
-        os.makedirs(directory, exist_ok=True)  # Ensure `directory` exists
+        if not os.path.exists(directory):
+            os.makedirs(directory)  # Ensure `directory` exists
         self.directory = directory
         self.resources = set()
         # Load existing resources from JSON if possible
@@ -80,18 +81,21 @@ class Image_Manager:
     def download_all(self):
         """Download all image resources to self.directory/raw."""
         subdirectory_path = os.path.join(self.directory, 'raw')
-        os.makedirs(subdirectory_path, exist_ok=True)
+        if not os.path.exists(subdirectory_path):
+            os.makedirs(subdirectory_path)
         i, n = 1, len(self.resources)
         invalid = set()
         for r in self.resources:
             try:
-                print('{}/{}: New file {}'.format(i, n, r.id), end=' ')
                 r.download(subdirectory_path)
-                print('sucessfully downloaded.')
+                print('{}/{}: New file {} successfully downloaded.'
+                      ''.format(i, n, r.id))
             except RuntimeWarning:
-                print('already exists.')
+                print('{}/{}: Old file {} already exists.'
+                      ''.format(i, n, r.id))
             except ValueError:
-                print('received an invalid response.')
+                print('{}/{}: The file {} received an invalid response.'
+                      ''.format(i, n, r.url))
                 invalid.add(r)
             i += 1
         self.resources.difference_update(invalid)
@@ -99,15 +103,17 @@ class Image_Manager:
     def make_versions(self, version_key, alteration, update_raw=False):
         """Create a new, altered version of each image resource."""
         subdirectory_path = os.path.join(self.directory, version_key)
-        os.makedirs(subdirectory_path, exist_ok=True)
+        if not os.path.exists(subdirectory_path):
+            os.makedirs(subdirectory_path)
         i, n = 1, len(self.resources)
         for r in self.resources:
             try:
-                print('{}/{}: New version of {}'.format(i, n, r.id), end=' ')
                 r.make_version(subdirectory_path, alteration, update_raw)
-                print('sucessfully created.')
+                print('{}/{}: New version {} successfully created.'
+                      ''.format(i, n, r.id))
             except RuntimeWarning:
-                print('already exists.')
+                print('{}/{}: Old file {} already exists.'
+                      ''.format(i, n, r.id))
             i += 1
 
     def resize_raws(self, size):
@@ -199,7 +205,7 @@ class Flickr_Manager(Image_Manager):
 
     def __init__(self, api_key, directory):
         """Load a Flickr API key file and initialize image resources."""
-        super().__init__(directory)
+        Image_Manager.__init__(self, directory)
         with open(api_key) as k:
             api_keys = k.readlines()
             self.__api_key = api_keys[0].rstrip()
@@ -224,7 +230,7 @@ class Flickr_Manager(Image_Manager):
         """
 
         def __init__(self, **kwargs):
-            super().__init__(**kwargs)
+            Image_Manager.Image_Resource.__init__(self, **kwargs)
             if 'url' not in kwargs:
                 template = 'https://farm{}.staticflickr.com/{}/{}_{}.jpg'
                 farm = kwargs['farm']
@@ -257,7 +263,7 @@ class Target_Manager(Image_Manager):
         """
 
         def __init__(self, **kwargs):
-            super().__init__(**kwargs)
+            Image_Manager.Image_Resource.__init__(self, **kwargs)
             if 'url' not in kwargs:
                 template = ('http://scene7.targetimg1.com/is/image/Target/'
                             '{}?wid={}')

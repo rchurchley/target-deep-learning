@@ -25,7 +25,8 @@ class Dataset:
             directory: A directory path for for the output files.
             sources: A list of directory paths containing images.
         """
-        os.makedirs(directory, exist_ok=True)  # Ensure `directory` exists
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         self.directory = directory
         self.sources = sources
         self.load_paths()
