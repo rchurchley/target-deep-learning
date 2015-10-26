@@ -4,6 +4,7 @@ import shutil
 import json
 from PIL import Image
 import flickrapi
+from . import image_filenames_as_dict
 
 requests.packages.urllib3.disable_warnings()
 
@@ -41,6 +42,13 @@ class Image_Manager:
                     self.resources.add(self.Image_Resource(id=key,
                                                            url=url,
                                                            raw=raw))
+        # Add resources in directory/raw missing from the JSON for some reason
+        raw_dir = os.path.join(directory, 'raw')
+        if os.path.exists(raw_dir):
+            for uid, path in image_filenames_as_dict(raw_dir).items():
+                self.resources.add(self.Image_Resource(id=uid,
+                                                       url='',
+                                                       raw=path))
 
     def __str__(self):
         """Return a string representation of the image resource set."""
