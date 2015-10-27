@@ -5,6 +5,9 @@ api_*
 images
 data
 
+# experimental data should be shared on slack
+experiments
+
 # generally a good idea
 *.pkl
 *.pyc

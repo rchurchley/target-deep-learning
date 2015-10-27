@@ -11,8 +11,6 @@ tags = ['nikon', 'canon', 'iphone', 'raw', 'photography', 'photos', 'photo',
         'australia', 'canada',  'china', 'europe', 'india', 'japan', 'usa']
 for tag in tags:
     print('Finding images tagged \'{}\'... '.format(tag))
-    start_time = time.time()
     flickr.add_resources(maximum=5000, tags=tag)
-    run_time = time.time() - start_time
 flickr.download_all()
 flickr.save()
