@@ -250,11 +250,11 @@ class Target_Manager(Image_Manager):
         resources: A dictionary of Target_Resource objects organized by id.
     """
 
-    def find_resources(self, filename):
+    def find_resources(self, filename, size):
         """Return an iterator of Target_Resources from a text file of SKUs."""
         with open(filename) as f:
             for sku in f:
-                yield self.Target_Resource(id=sku.strip())
+                yield self.Target_Resource(id=sku.strip(), size=size)
 
     class Target_Resource(Image_Manager.Image_Resource):
         """The Flickr URL and local path to a raw Target product image.
