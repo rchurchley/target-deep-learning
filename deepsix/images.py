@@ -94,9 +94,12 @@ class Image_Manager:
                 print('{}/{}: Old file {} already exists.'
                       ''.format(i, n, r.id))
             except ValueError:
-                print('{}/{}: The file {} received an invalid response.'
+                print('{}/{}: Downloading {} received an invalid response.'
                       ''.format(i, n, r.url))
                 invalid.add(r)
+            except requests.exceptions.ConnectionError:
+                print('{}/{}: Downloading {} timed out.')
+                break
             i += 1
         self.resources.difference_update(invalid)
 
