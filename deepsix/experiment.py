@@ -91,7 +91,8 @@ class Experiment:
             csv.writer(csvfile).writerows(self.history)
         filename = os.path.join(self.directory, 'learned_parameters.npy')
         parameters = lasagne.layers.get_all_param_values(self.__network)
-        numpy.array(parameters).dump(filename)
+        parameters = parameters
+        numpy.save(filename, parameters)
 
     def __compile_model(self,
                         network,
