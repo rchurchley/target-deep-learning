@@ -28,11 +28,9 @@ def network(input_var=None):
     return network
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
-        print('Usage: python3 path/to/data_dir path/to/output_dir n_epochs')
+    if len(sys.argv) < 3:
+        print('Usage: python3 path/to/data_dir path/to/experiment_dir')
         exit()
     exp = Experiment(data=sys.argv[1], directory=sys.argv[2], network=network)
-    n = 10 if len(sys.argv) == 3 else int(sys.argv[3])
-    exp.train(epochs=n)
+    exp.load_parameters()
     exp.test()
-    exp.save()

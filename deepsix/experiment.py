@@ -43,6 +43,12 @@ class Experiment:
         self.__compile_model(network, **kwargs)
         self.__load_data(data)
 
+    def load_parameters(self):
+        """Load the learned parameters from a previous experiment."""
+        filename = os.path.join(self.directory, 'learned_parameters.npy')
+        params = numpy.load(filename)
+        lasagne.layers.set_all_param_values(self.__network, params)
+
     def train(self, epochs):
         """Train the network, report on progress, and output test results.
 
@@ -64,11 +70,14 @@ class Experiment:
                   ''.format(epoch, trn_err, trn_acc, val_err, val_acc,
                             elapsed_time))
             self.history.append([epoch, trn_err, trn_acc, val_err, val_acc])
+        self.report['epochs'] = epochs
+        self.report['time_per_epoch'] = training_time / epochs
+
+    def test(self):
+        """Test the learned parameters on the testing dataset."""
         tst_err, tst_acc = self.__progress(self.testing, self.__val_fn)
         print('Test loss: {}'.format(tst_err))
         print('Test accuracy: {:.3%}'.format(tst_acc))
-        self.report['epochs'] = epochs
-        self.report['time_per_epoch'] = training_time / epochs
         self.report['test_loss'] = tst_err
         self.report['test_accuracy'] = tst_acc
 
