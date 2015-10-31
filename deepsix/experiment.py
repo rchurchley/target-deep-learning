@@ -43,9 +43,10 @@ class Experiment:
         self.__compile_model(network, **kwargs)
         self.__load_data(data)
 
-    def load_parameters(self):
+    def load_parameters(self, filename=None):
         """Load the learned parameters from a previous experiment."""
-        filename = os.path.join(self.directory, 'learned_parameters.npy')
+        if not filename:
+            filename = os.path.join(self.directory, 'learned_parameters.npy')
         params = numpy.load(filename)
         lasagne.layers.set_all_param_values(self.__network, params)
 

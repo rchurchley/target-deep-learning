@@ -32,5 +32,8 @@ if __name__ == '__main__':
         print('Usage: python3 path/to/data_dir path/to/experiment_dir')
         exit()
     exp = Experiment(data=sys.argv[1], directory=sys.argv[2], network=network)
-    exp.load_parameters()
+    if len(sys.argv) < 4:
+        exp.load_parameters()
+    else:
+        exp.load_parameters(sys.argv[3])
     exp.test()
