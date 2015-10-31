@@ -1,6 +1,6 @@
 import numpy
 import theano
-import theano.tensor
+import theano.tensor as T
 import lasagne
 from lasagne.layers import get_output, get_all_params
 import time
@@ -39,7 +39,9 @@ class Experiment:
             os.makedirs(directory)  # Ensure `directory` exists
         self.directory = directory
         self.report = {}
-        self.history = [['Epoch', 'Trn_Err', 'Trn_Acc', 'Val_Err', 'Val_Acc']]
+        self.history = [['Epoch',
+                         'Trn_Loss', 'Trn_Prc', 'Trn_Rec', 'Trn_Acc',
+                         'Val_Loss', 'Val_Prc', 'Val_Rec', 'Val_Acc']]
         self.__compile_model(network, **kwargs)
         self.__load_data(data)
 
@@ -57,30 +59,42 @@ class Experiment:
             epochs: Number of epochs to train for.
         """
         print('Starting training...')
-        print('\n{:4} {:>17}  {:>17}'.format('', 'Training', 'Validation'))
-        print('{:4} {:>8} {:>8}  {:>8} {:>8} {:>8}'.format(
-            '', 'Loss', 'Acc', 'Loss', 'Acc', 'Time'))
+        print('\n{:13} '
+              '{:>17}  '
+              '{:^38}'
+              ''.format('', '--- Training ---', '--- Validation ---'))
+        print('{:4} {:>8} '
+              '{:>8} {:>8}  '
+              '{:>8} {:>8} {:>8} {:>8}'
+              ''.format('', '', 'Loss', 'Acc', 'Loss', 'Prc', 'Rec', 'Acc'))
         training_time = 0
         for epoch in range(1, epochs + 1):
             start_time = time.time()
-            trn_err, trn_acc = self.__progress(self.training, self.__train_fn)
-            val_err, val_acc = self.__progress(self.validation, self.__val_fn)
+            trn_stats = self.__progress(self.training, self.__train_fn)
+            val_stats = self.__progress(self.validation, self.__val_fn)
             elapsed_time = time.time() - start_time
             training_time += elapsed_time
-            print('{:>4} {:>8.3f} {:>8.1%}  {:>8.3f} {:>8.1%}  {:>7.2f}s'
-                  ''.format(epoch, trn_err, trn_acc, val_err, val_acc,
-                            elapsed_time))
-            self.history.append([epoch, trn_err, trn_acc, val_err, val_acc])
+            print('{:>4} {:>7.2f}s '
+                  '{:>8.3f} {:>8.1%}  '
+                  '{:>8.3f} {:>8.1%} {:>8.1%} {:>8.1%}'
+                  ''.format(epoch, elapsed_time,
+                            trn_stats[0], trn_stats[-1],
+                            *val_stats))
+            self.history.append([epoch] + list(trn_stats) + list(val_stats))
         self.report['epochs'] = epochs
         self.report['time_per_epoch'] = training_time / epochs
 
     def test(self):
         """Test the learned parameters on the testing dataset."""
-        tst_err, tst_acc = self.__progress(self.testing, self.__val_fn)
-        print('Test loss: {}'.format(tst_err))
-        print('Test accuracy: {:.3%}'.format(tst_acc))
-        self.report['test_loss'] = tst_err
-        self.report['test_accuracy'] = tst_acc
+        statistics = self.__progress(self.testing, self.__val_fn)
+        print('Loss:      {}'.format(statistics[0]))
+        print('Precision: {:.3%}'.format(statistics[1]))
+        print('Recall:    {:.3%}'.format(statistics[2]))
+        print('Accuracy:  {:.3%}'.format(statistics[3]))
+        self.report['test_loss'] = statistics[0]
+        self.report['test_precision'] = statistics[1]
+        self.report['test_recall'] = statistics[2]
+        self.report['test_accuracy'] = statistics[3]
 
     def save(self):
         """Save the results of the experiment to self.directory."""
@@ -107,8 +121,8 @@ class Experiment:
         self.report['learning_rate'] = learning_rate
         self.report['learning_momentum'] = momentum
         start_time = time.time()
-        self.__input_var = theano.tensor.tensor4('inputs')
-        self.__target_var = theano.tensor.ivector('targets')
+        self.__input_var = T.tensor4('inputs')
+        self.__target_var = T.ivector('targets')
         self.__network = network(self.__input_var)
         self.__loss = lambda t: loss(get_output(self.__network,
                                                 deterministic=t),
@@ -118,22 +132,25 @@ class Experiment:
             get_all_params(self.__network, trainable=True),
             learning_rate=learning_rate,
             momentum=momentum)
-        accuracy = theano.tensor.mean(
-            theano.tensor.eq(
-                theano.tensor.argmax(
-                    get_output(
-                        self.__network,
-                        deterministic=True),
-                    axis=1),
-                self.__target_var),
-            dtype=theano.config.floatX)
+        predictions = T.argmax(
+            get_output(self.__network, deterministic=True),
+            axis=1)
+        # number of correct predictions
+        n_correct = T.sum(T.eq(predictions, self.__target_var))
+        # number of relevant images in the sample
+        n_relevant = T.sum(self.__target_var)
+        # number of images predicted to be relevant
+        n_selected = T.sum(predictions)
+        # number of correct predictions of relevance
+        n_correct_relevant = T.sum(predictions & self.__target_var)
+        statistics = [n_correct, n_selected, n_relevant, n_correct_relevant]
         self.__train_fn = theano.function(
             [self.__input_var, self.__target_var],
-            [self.__loss(False), accuracy],
+            [self.__loss(False)] + statistics,
             updates=self.__optimizer)
         self.__val_fn = theano.function(
             [self.__input_var, self.__target_var],
-            [self.__loss(True), accuracy])
+            [self.__loss(True)] + statistics)
         elapsed_time = time.time() - start_time
         self.report['time_to_compile'] = elapsed_time
 
@@ -166,16 +183,27 @@ class Experiment:
         Return:
             Average objective function value and accuracy.
         """
-        total_err = 0
-        total_acc = 0
+        batchsize = 100
+        total_loss = 0
+        total_correct = 0
+        total_selected = 0
+        total_relevant = 0
+        total_correct_relevant = 0
         total_batches = 0
-        for batch in self.__iterate_minibatches(dataset, batchsize=100):
+        for batch in self.__iterate_minibatches(dataset, batchsize):
             inputs, targets = batch
-            err, acc = input_function(inputs, targets)
-            total_err += err
-            total_acc += acc
+            l, c, s, r, h = input_function(inputs, targets)
+            total_loss += l
+            total_correct += c
+            total_selected += s
+            total_relevant += r
+            total_correct_relevant += h
             total_batches += 1
-        return total_err / total_batches, total_acc / total_batches
+        avg_loss = total_loss / total_batches
+        precision = total_correct_relevant / total_selected
+        recall = total_correct_relevant / total_relevant
+        accuracy = total_correct / (batchsize * total_batches)
+        return avg_loss, precision, recall, accuracy
 
     def __iterate_minibatches(self, dataset, batchsize, shuffle=False):
         """Split input data into batches and iterate over the minibatches."""
